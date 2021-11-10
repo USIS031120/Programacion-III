@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplicacion de Registro Academico</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col col-md-6">
+                <div class="card text-white bg-dark mb-3">
+                    <div class="card-header">REGISTRO ALUMNOS</div>
+                    <div class="card-body">
+                        <form id="frmAlumnos" data-accion="nuevo" data-idalumno="0">
+                            <div class="mb-2 row">
+                                <input autocomplete="off" id="txtCodigoAlumnos" required pattern="^([USIS|USLI|USLA]){4}[0-9]{6}" placeholder="Codigo" type="text" aria-label="Codigo" class="form-control">
+                            </div>
+                            <div class="mb-2 row">
+                                <input id="txtNombreAlumnos" required pattern="[A-Za-zÑñáéíóú ]{6,65}" placeholder="Nombre" type="text" aria-label="Nombre" class="form-control">
+                            </div>
+                            <div class="mb-2 row">
+                                <input id="txtTelefonoAlumnos" required pattern="[0-9]{4}([-| ]){1}[0-9]{4}" placeholder="Telefono" type="text" aria-label="Tels" class="form-control">
+                            </div>
+                            <div class="mb-2 row">
+                                <button type="submit" class="btn btn-outline-primary text-white">REGISTRAR</button>
+                                <button type="reset" class="btn btn-outline-warning text-white">NUEVO</button>
+                                <a href="http://localhost:3000/docentes" class="btn btn-primary text-white">reg docentes</a>
+                            </div>
+                            <div id="alerta" class="alert alert-success d-none" role="alert">Hola</div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col col-md-6">
+                <div class="card text-white bg-dark mb-3">
+                    <div class="card-header">CONSULTA DE ALUMNOS</div>
+                    <div class="card-body">
+                        <form id="frmConsultaAlumnos">
+                           <table id="tblConsultaAlumnos" class="table table-dark table-hover">
+                               <thead>
+                                    <tr>
+                                        <th colspan="4">
+                                            <input class="form-control" placeholder="Buscar alumnos" type="text" 
+                                                name="txtBuscarAlumnos" id="txtBuscarAlumnos" />
+                                        </th>
+                                    </tr>
+                                    <tr>
+                                        <th scope="col">Codigo</th>
+                                        <th scope="col">Nombre</th>
+                                        <th scope="col">Telefono</th>
+                                        <th></th>
+                                    </tr>
+                               </thead>
+                               <tbody></tbody>
+                           </table>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+    <script>
+        function mostrarDatosAlumnos(alumno){
+            $("#frmAlumnos")
+                .data("accion", "modificar")
+                .data("idalumno",alumno.idAlumno);
+            $("#txtCodigoAlumnos").val(alumno.codigo);
+            $("#txtNombreAlumnos").val(alumno.nombre);
+            $("#txtTelefonoAlumnos").val(alumno.telefono);
+        }
+        function limpiarFormulario(){
+            $("#frmAlumnos")
+                .data("accion", "nuevo")
+                .data("idalumno",0);
+            $("#frmAlumnos input[type=text]").val('');
+        }
+        function verificarErrores(data){
+            if(data.resp.indexOf("Error")==-1){
+                        limpiarFormulario();
+                        obtenerDatosAlumno();
+
+                        $("#alerta")
+                            .removeClass("alert-danger")
+                            .addClass("alert-success");
+                    }else{
+                        $("#alerta")
+                            .removeClass("alert-success")
+                            .addClass("alert-danger");
+                    }
+                    mostrarMsg(data.resp);
+        }
+        function eliminarAlumno(alumno){
+            if(confirm(`Esta seguro de eliminar el alumno ${alumno.nombre}?`)){
+                let datos = {
+                    accion : "eliminar",
+                    idAlumno: alumno.idAlumno
+                };
+                $.post("http://localhost:3000", JSON.stringify(datos), (data, status)=>{
+                    verificarErrores(data)
+                    limpiarFormulario();
+                    obtenerDatosAlumno();
+                }, "json");
+            }
+        }
+        function mostrarMsg(msg){
+            $("#alerta")
+                .text(msg)
+                .toggleClass("d-none");
+            
+            setTimeout(()=>{
+                $("#alerta").toggleClass("d-none");
+            }, 5000);
+        }
+        function obtenerDatosAlumno(){
+            $.get("http://localhost:3000/consulta", (resp, status)=>{
+                let tbody = $("#tblConsultaAlumnos > tbody"),
+                        filas = "";
+                tbody.find("tr").remove();
+               if (resp.data.length>0){    
+                    resp.data.forEach(alumno=>{
+                    filas += `
+                            <tr onClick='mostrarDatosAlumnos(${JSON.stringify(alumno)})'>
+                                <td>${alumno.codigo}</td>
+                                <td>${alumno.nombre}</td>
+                                <td>${alumno.telefono}</td>
+                                <td>
+                                    <a class="btn btn-outline-danger" onClick='eliminarAlumno(${JSON.stringify(alumno)})'>Eliminar</a>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }else{
+                    filas = `
+                        <tr>
+                            <td colspan="3">No hay alumnos para mostrar</td>
+                        </tr>
+                    `;
+                }
+                tbody.append(filas);
+            }, "json");
+        }
+        $(document).ready(e=>{
+            $("#txtBuscarAlumnos").keyup(function(e){
+                let valor = $(this).val(),
+                    $tblalumnos = $("#tblConsultaAlumnos > tbody > tr");
+                $tblalumnos.show();
+                let $no_encontrados = $tblalumnos.filter(function(i, fila){
+                    return $(this).find("td:not(:last)").text().toLowerCase().indexOf(valor.toLowerCase())==-1;
+                });
+                $no_encontrados.hide();
+            });
+            $("#frmAlumnos")
+                .on("reset", e=>{
+                    limpiarFormulario();
+                })
+                .submit(e=>{
+                e.preventDefault();
+
+                let accion = $("#frmAlumnos").data("accion"),
+                    idAlumno = $("#frmAlumnos").data("idalumno"),
+                    codigo = $("#txtCodigoAlumnos").val(),
+                    nombre = $("#txtNombreAlumnos").val(),
+                    telefono = $("#txtTelefonoAlumnos").val(),
+                    datos = {accion, idAlumno, codigo, nombre, telefono};
+
+                $.post("http://localhost:3000", JSON.stringify(datos), (data, status)=>{
+                    verificarErrores(data);
+                }, "json");
+            });
+            obtenerDatosAlumno();
+        });
+    </script>
+</body>
+</html>
