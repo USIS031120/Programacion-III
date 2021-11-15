@@ -54,6 +54,17 @@ class servidorBasico(SimpleHTTPRequestHandler):
             self.path = "/index.html"
             return SimpleHTTPRequestHandler.do_GET(self)
 
+        elif self.path == "/iniciar-sesion":
+            self.path = "/iniciar-sesion.html"
+            return SimpleHTTPRequestHandler.do_GET(self)
+
+        elif self.path == "/registrar":
+            self.path = "/registrar.html"
+            return SimpleHTTPRequestHandler.do_GET(self)
+
+        elif self.path == "/crear-votacion":
+            self.path = "/crear-votacion.html"
+            return SimpleHTTPRequestHandler.do_GET(self)
         elif self.path=="/consulta":
             resp = crud.consultar()
             resp = json.dumps(dict(data=resp))
