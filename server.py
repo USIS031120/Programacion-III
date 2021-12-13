@@ -13,7 +13,7 @@ class crud:
             port=3306,
             user="root",
             passwd="",
-            database="db_academica_a2"
+            database="sistema_votaciones"
         )
         if self.db.is_connected():
             print("Conexion establecida")
@@ -22,21 +22,15 @@ class crud:
 
     def consultar(self):
         cursor = self.db.cursor(dictionary=True)
-        sql = "SELECT * FROM alumnos LIMIT 0, 5"
+        sql = "SELECT * FROM votaciones LIMIT 0, 5"
         cursor.execute(sql)
         result = cursor.fetchall()
         return result
 
-    def administrar_alumno(self, alumno):
-        if alumno["accion"]=="nuevo":
-            sql = "INSERT INTO alumnos (codigo, nombre, telefono) VALUES (%s, %s, %s)"
-            val = (alumno["codigo"], alumno["nombre"], alumno["telefono"])
-        elif alumno["accion"]=="modificar":
-            sql = "UPDATE alumnos SET codigo=%s, nombre=%s, telefono=%s WHERE idAlumno=%s"
-            val = (alumno["codigo"], alumno["nombre"], alumno["telefono"], alumno["idAlumno"])
-        elif alumno["accion"]=="eliminar":
-            sql = "DELETE FROM alumnos WHERE idAlumno=%s"
-            val = (alumno["idAlumno"],)
+    def administrar_votacion(self, votacion):
+        if votacion["accion"]=="nuevo":
+            sql = "INSERT INTO votaciones (nombre) VALUES (%s)"
+            val = (votacion["nombre"])
         return self.ejecutar_consultas(sql, val)
     
     def ejecutar_consultas(self, sql, val):
@@ -47,6 +41,26 @@ class crud:
             return "Registro procesado con exito"
         except Exception as e:
             return "Error: " + str(e)
+
+    def iniciar_sesion(self, contenido):
+        sql = "SELECT * FROM usuarios WHERE dui = %s AND clave = %s"
+        val = (contenido["dui"], contenido["clave"])
+        # return self.ejecutar_consultas(sql, val)
+        cursor = self.db.cursor(dictionary=True)
+        cursor.execute(sql, val)
+        result = cursor.fetchall()
+        if len(result) != 0:
+            crud.sesion["dui"] = contenido["dui"]
+        return result
+
+    def consultar_votacion(self, contenido):
+        sql = "SELECT * FROM candidatos WHERE idVotacion = %s"
+        val = (contenido["id"],)
+        cursor = self.db.cursor(dictionary=True)
+        cursor.execute(sql, val)
+        result = cursor.fetchall()
+        return result
+    sesion = {"dui": ""}
 crud = crud()
 class servidorBasico(SimpleHTTPRequestHandler):
     def do_GET(self):
@@ -65,6 +79,9 @@ class servidorBasico(SimpleHTTPRequestHandler):
         elif self.path == "/crear-votacion":
             self.path = "/crear-votacion.html"
             return SimpleHTTPRequestHandler.do_GET(self)
+        elif self.path == "/elecciones":
+            self.path = "/elecciones.html"
+            return SimpleHTTPRequestHandler.do_GET(self)
         elif self.path=="/consulta":
             resp = crud.consultar()
             resp = json.dumps(dict(data=resp))
@@ -78,12 +95,41 @@ class servidorBasico(SimpleHTTPRequestHandler):
         contenido = contenido.decode("utf-8")
         contenido = parse.unquote(contenido)
         contenido = json.loads(contenido)
-        resp = crud.administrar_alumno(contenido)
-        resp = json.dumps(dict(resp=resp))
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(resp.encode("utf-8"))
 
+        if self.path == "/crear":
+            resp = crud.administrar_votacion(contenido)
+            resp = json.dumps(dict(resp=resp))
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(resp.encode("utf-8"))
+
+        if self.path == "/iniciar-sesion":
+            resp = crud.iniciar_sesion(contenido)
+            resp = json.dumps(dict(resp=resp))
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(resp.encode("utf-8"))
+        if self.path == "/votacion":
+            resp = crud.consultar_votacion(contenido)
+            resp = json.dumps(dict(data=resp))
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(resp.encode("utf-8"))
+        if self.path == "/access":
+            if crud.sesion["dui"] != "" and contenido["dui"] == crud.sesion["dui"]:
+                resp = crud.sesion["dui"]
+            else:
+                resp = {"ok": False}
+            resp = json.dumps(dict(data=resp))
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(resp.encode("utf-8"))
+        if self.path == "/logout":
+            crud.sesion["dui"] == ""
+            resp = json.dumps(dict(data=resp))
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(resp.encode("utf-8"))
 print("Servidor iniciado")
 server = HTTPServer(("localhost", 3000), servidorBasico)
 server.serve_forever()
